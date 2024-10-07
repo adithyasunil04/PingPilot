@@ -1,6 +1,6 @@
 
 scapy
-numpy
+numpy==1.21.0
 torch
 onnxruntime 
 onnxruntime-vitisai

@@ -1,21 +1,26 @@
 from sys import argv
-from os.path import isfile
+import os
 import numpy as np
 import onnxruntime as ort
 from pathlib import Path
 from scapy.all import sniff, IP, TCP, UDP
-import multiprocessing as mp
+import threading
+import queue
 from new_prioritizer import priority_setter
 
 def load_quantized_model(model_path, ep='ipu'):
-    providers = ['VitisAIExecutionProvider']
-    cache_dir = Path(__file__).parent.resolve()
-    provider_options = [{
-        'config_file': 'vaip_config.json',
-        'cacheDir': str(cache_dir),
-        'cacheKey': 'modelcachekey'
-    }]
-    return ort.InferenceSession(model_path, providers=providers, provider_options=provider_options)
+    try:
+        providers = ['VitisAIExecutionProvider']
+        cache_dir = Path(__file__).parent.resolve()
+        provider_options = [{
+            'config_file': 'vaip_config.json',
+            'cacheDir': str(cache_dir),
+            'cacheKey': 'modelcachekey'
+        }]
+        return ort.InferenceSession(model_path, providers=providers, provider_options=provider_options)
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        return None
 
 def extract_features(src_ip, src_port, dst_port):
     features = np.array([int(x) for x in src_ip.split('.')] + [src_port, dst_port])
@@ -40,30 +45,48 @@ def packet_callback(packet, packet_queue):
             return
         packet_queue.put((src_ip, src_port, dst_port))
 
-def process_packets(session, packet_queue, prediction_queue):
-    while True:
-        src_ip, src_port, dst_port = packet_queue.get()
-        features = extract_features(src_ip, src_port, dst_port)
-        prediction = session.run(None, {'input': features})
-        priority = get_priority(prediction)
-        prediction_queue.put({"src_ip": src_ip, "src_port": src_port, "dst_port": dst_port, "priority": priority})
+def process_packets(session, packet_queue, prediction_queue, stop_event):
+    while not stop_event.is_set():
+        try:
+            src_ip, src_port, dst_port = packet_queue.get(timeout=1)
+            features = extract_features(src_ip, src_port, dst_port)
+            prediction = session.run(None, {'input': features})
+            priority = get_priority(prediction)
+            prediction_queue.put({"src_ip": src_ip, "src_port": src_port, "dst_port": dst_port, "priority": priority})
+        except queue.Empty:
+            continue
+        except Exception as e:
+            print(f"Error processing packet: {e}")
 
 def main(model_path):
-    if model_path is None:
-        while not isfile(model_path := input("Enter the quantized model (.onnx) file name: ")):
-            pass
+    if model_path is None or not os.path.isfile(model_path):
+        model_path = input("Enter the quantized model (.onnx) file name: ")
+        if not os.path.isfile(model_path):
+            print("Invalid file path.")
+            return
 
     session = load_quantized_model(model_path)
-    packet_queue = mp.Queue()
-    prediction_queue = mp.Queue()
+    if session is None:
+        return
 
-    packet_process = mp.Process(target=process_packets, args=(session, packet_queue, prediction_queue))
-    packet_process.start()
+    packet_queue = queue.Queue()
+    prediction_queue = queue.Queue()
+    stop_event = threading.Event()
 
-    priority_process = mp.Process(target=priority_setter, args=(prediction_queue,))
-    priority_process.start()
+    packet_thread = threading.Thread(target=process_packets, args=(session, packet_queue, prediction_queue, stop_event))
+    packet_thread.start()
 
-    sniff(prn=lambda x: packet_callback(x, packet_queue), store=0)
+    priority_thread = threading.Thread(target=priority_setter, args=(prediction_queue, stop_event))
+    priority_thread.start()
+
+    try:
+        sniff(prn=lambda x: packet_callback(x, packet_queue), store=0)
+    except KeyboardInterrupt:
+        print("Stopping...")
+    finally:
+        stop_event.set()
+        packet_thread.join()
+        priority_thread.join()
 
 if __name__ == "__main__":
     main(argv[1] if len(argv) > 1 else None)

@@ -1,3 +1,19 @@
+
+import ctypes
+import sys
+
+def is_admin():
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+
+if not is_admin():
+    print("This script requires administrative privileges. Please run it as an administrator.")
+    sys.exit(1)
+
+# Rest of your code3.py content goes here
+
 import win32process
 import win32con
 import win32api
