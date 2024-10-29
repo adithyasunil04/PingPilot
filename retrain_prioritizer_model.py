@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from os.path import isfile
+from os import name as OS_NAME
 import datetime
 from sys import argv
 
@@ -93,6 +94,12 @@ def main(pth_file, datasetName):
 
     # updated PTH model's filename
     new_PTH_FILENAME = f"packet_prioritizer_{timestamp}.pth"
+
+    if OS_NAME=="posix":
+        new_PTH_FILENAME = f"datasets/packet_prioritizer_{timestamp}.pth"
+    elif OS_NAME == "nt":
+        new_PTH_FILENAME = f"datasets\packet_prioritizer_{timestamp}.pth"
+
 
     # Save the updated model
     torch.save(model.state_dict(), new_PTH_FILENAME)

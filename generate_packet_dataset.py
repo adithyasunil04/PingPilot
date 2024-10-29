@@ -6,6 +6,7 @@ from collections import deque
 import time
 import subprocess
 import datetime
+from os import name
 
 # Constants
 SEQUENCE_LENGTH = 5
@@ -122,9 +123,14 @@ def main():
 
      # Generate timestamp
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    if name=="posix":
+        new_PT_FILENAME = f"datasets/packet_dataset_{timestamp}_{CAPTURE_DURATION}ex.pt"
+    elif name == "nt":
+        new_PT_FILENAME = f"datasets\\packet_dataset_{timestamp}_{CAPTURE_DURATION}.pt"
+
 
     # Save the dataset
-    torch.save((X_tensor, y_list), f'packet_dataset_{timestamp}_{CAPTURE_DURATION}.pt')
+    torch.save((X_tensor, y_list), new_PT_FILENAME)
     
     print(f"Dataset saved. Shape: {X_tensor.shape}, Labels: {len(y_list)}")
 
