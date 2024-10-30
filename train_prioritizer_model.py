@@ -5,8 +5,9 @@ from torch.utils.data import DataLoader, TensorDataset
 import datetime
 from os.path import isfile
 from sys import argv
-from torch.cuda.amp import GradScaler
+from torch.amp import GradScaler
 from torch.amp import autocast
+from os import name as OS_NAME
 
 
 
@@ -26,7 +27,7 @@ class PacketPrioritizer(nn.Module):
 def train_model(model, train_loader, device, num_epochs=50):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters())
-    scaler = GradScaler()
+    scaler = GradScaler('cuda')
     
     for epoch in range(num_epochs):
         model.train()
@@ -68,14 +69,24 @@ def main(datasetName):
     
     if datasetName == None:
         while True:
-            datasetName = input("Enter the dataset (.pt) file name:")
+            datasetName = input("Enter the dataset (.pt) file name (from datasets/ folder):")
+            CAPTURE_DURATION = int(datasetName.split('_')[-1].split('.')[0])
+
+            if OS_NAME=="posix":
+                datasetName = "datasets/" + datasetName
+            elif OS_NAME=="nt":
+                datasetName = "datasets\\" + datasetName
+            
             if isfile(datasetName) == False:
                 print(f"File doesnt exist.{datasetName} Retry.")
             else:
                 break
+    
+
+
 
     # Check if CUDA is available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda")
     print(f"Using device: {device}")
 
     X, y = torch.load(datasetName, weights_only=True)
@@ -94,7 +105,11 @@ def main(datasetName):
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # updated PTH model's filename
-    new_PTH_FILENAME = f"packet_prioritizer_{timestamp}.pth"
+
+    if OS_NAME == "posix":
+        new_PTH_FILENAME = f"pthFiles/packet_prioritizer_{timestamp}_{CAPTURE_DURATION}.pth"
+    elif OS_NAME == "nt":
+        new_PTH_FILENAME = f"pthFiles\\packet_prioritizer_{timestamp}_{CAPTURE_DURATION}.pth"
 
 
     # Save the trained model

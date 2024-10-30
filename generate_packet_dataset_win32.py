@@ -6,7 +6,7 @@ from collections import deque
 import time
 import subprocess
 import datetime
-from os import name
+from os import name as OS_NAME
 
 # Constants
 SEQUENCE_LENGTH = 5
@@ -103,10 +103,16 @@ def capture_packets(interface):
 
 def main():
 
-    global CAPTURE_DURATION
-    print("5 min = 300 sec\n10min = 600 sec\n1hr = 3600sec\n")
-    CAPTURE_DURATION = int(input("Enter Capture Duration in seconds:"))
+    if OS_NAME != "nt":
+        print("This script intended to run only on win10/win11 or any other windows NT platform.")
+        sys.exit(1)
 
+    global CAPTURE_DURATION
+    print("5 min = 300 sec\n10min = 600 sec\n1hr = 3600sec\n0sec = exit()")
+    CAPTURE_DURATION = int(input("Enter Capture Duration in seconds:"))
+    if CAPTURE_DURATION == 0:
+        sys.exit(0)
+    
     interface = get_wifi_interface()
     if not interface:
         print("Could not find WiFi interface. Please check your network connections.")
@@ -124,7 +130,7 @@ def main():
      # Generate timestamp
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     if name=="posix":
-        new_PT_FILENAME = f"datasets/packet_dataset_{timestamp}_{CAPTURE_DURATION}ex.pt"
+        new_PT_FILENAME = f"datasets/packet_dataset_{timestamp}_{CAPTURE_DURATION}.pt"
     elif name == "nt":
         new_PT_FILENAME = f"datasets\\packet_dataset_{timestamp}_{CAPTURE_DURATION}.pt"
 

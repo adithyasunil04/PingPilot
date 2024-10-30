@@ -6,6 +6,7 @@ from collections import deque
 import time
 import subprocess
 import datetime
+from os import name as OS_NAME
 
 # Constants
 SEQUENCE_LENGTH = 5
@@ -122,9 +123,15 @@ def main():
         print("This script requires root privileges. Please run with sudo.")
         sys.exit(1)
 
+    if OS_NAME != 'posix':
+        print("This script is intended to run only on POSIX compliant system.")
+        sys.exit(1)
+
     global CAPTURE_DURATION
-    print("5 min = 300 sec\n10min = 600 sec\n1hr = 3600sec\n")
+    print("5 min = 300 sec\n10min = 600 sec\n1hr = 3600sec\n0sec = exit()")
     CAPTURE_DURATION = int(input("Enter Capture Duration in seconds: "))
+    if CAPTURE_DURATION == 0:
+        sys.exit(0)
 
     # Get available wireless interfaces
     wireless_interfaces = get_wireless_interfaces()
@@ -153,6 +160,7 @@ def main():
 
     # Generate timestamp
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    new_PT_FILENAME = f"datasets/packet_dataset_{timestamp}_{CAPTURE_DURATION}.pt"
 
     # Save the dataset
     torch.save((X_tensor, y_list), f'packet_dataset_{timestamp}_{CAPTURE_DURATION}.pt')
