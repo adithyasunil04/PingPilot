@@ -124,7 +124,7 @@ def main():
      # Generate timestamp
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     if name=="posix":
-        new_PT_FILENAME = f"datasets/packet_dataset_{timestamp}_{CAPTURE_DURATION}ex.pt"
+        new_PT_FILENAME = f"datasets/packet_dataset_{timestamp}_{CAPTURE_DURATION}.pt"
     elif name == "nt":
         new_PT_FILENAME = f"datasets\\packet_dataset_{timestamp}_{CAPTURE_DURATION}.pt"
 
