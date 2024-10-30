@@ -64,8 +64,6 @@ db.sqlite3-journal
 
 # ONLY ON RAGHU's system 
 # ignore .pt and .pth files
-*.pt
-*.pth
 
 # vscode workspace
 *.code-workspace
